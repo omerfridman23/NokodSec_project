@@ -1,0 +1,23 @@
+{
+  "name": "fullstack-task-server",
+  "version": "1.0.0",
+  "description": "Simple express server in typescript",
+  "main": "index.ts",
+  "scripts": {
+    "start": "tsx index.ts",
+    "dev": "tsx --watch index.ts"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.21.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.2",
+    "@types/cors": "^2.8.17"
+  }
+}
