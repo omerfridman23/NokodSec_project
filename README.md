@@ -11,6 +11,7 @@ The client currently fetches all data at once and displays it in a table with a 
 3. **Backend Filtering**: Add the ability to filter data (e.g., by status or type) using query parameters in the API.
 4. Add filters components that will allow you to choose the value from a dropdown menu (if you have many options in the drop down what will you do?). The filter should support only "is" operation, i.e if the user choose type = 'flow' you should bring all entities with this type.
 5. Add pagination component in the UI.
+6. When refreshing the page, the current filters and sorting should be kept.
 
 ## Bonus:
 
