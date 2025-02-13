@@ -8,14 +8,12 @@ The client currently fetches all data at once and displays it in a table with a 
 
 1. **Backend Pagination**: Load and display data in pages instead of fetching all items at once.
 2. **Backend Sorting**: Allow the user to sort table columns by making backend requests.
-3. **Backend Filtering**: Add the ability to filter data (e.g., by status or type) using query parameters in the API.
-4. Add filters components that will allow you to choose the value from a dropdown menu (if you have many options in the drop down what will you do?). The filter should support only "is" operation, i.e if the user choose type = 'flow' you should bring all entities with this type.
+3. **Backend Filtering**: Add the ability to filter data (all columns except id) by using query parameters in the API.
+4. Add filters components that will allow you to choose the value from a dropdown menu (if you have many options in the drop down what will you do?). The filter should support only "is" operation, i.e if the user choose name = 'avi' you should bring all entities with this type.
 5. Add pagination component in the UI.
 6. When refreshing the page, the current filters and sorting should be kept.
 
 ## Bonus:
-
-- Add sorting in the UI.
 - Implement the "items per page" functionality - Dropdown in the UI and support on the server
 
 ## Clarifications
@@ -23,7 +21,7 @@ The client currently fetches all data at once and displays it in a table with a 
 1. You can use MUI library and any other library as you like.
 2. You can use chatGPT.
 3. Due to the fact we don't have a real DB here, its ok to do "query" on the json (make it object and get whatever data you need with javascript) even though it's not efficient.
-4. Don't spend time on design and fancy css.
+4. Don't spend time on design and fancy css but it should be reasonable UX.
 
 ## Getting Started
 
