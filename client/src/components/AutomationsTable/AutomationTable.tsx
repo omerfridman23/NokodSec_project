@@ -102,7 +102,7 @@ const AutomationTable = (): JSX.Element => {
   useEffect(() => {
     const fetchSampleData = async (): Promise<void> => {
       try {
-        const response = await Gateway.getAutomations(1, 100); // Get first 100 items for sample data
+        const response = await Gateway.getAutomations(1, 5); // Get first 5 items for sample data
         const { data } = response?.data || { data: [], total: 0 };
         setSampleData(data);
       } catch (error) {
