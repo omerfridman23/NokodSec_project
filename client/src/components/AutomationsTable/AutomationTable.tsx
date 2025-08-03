@@ -14,12 +14,13 @@ import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import IconButton from '@mui/material/IconButton';
 import Button from '@mui/material/Button';
+import TextField from '@mui/material/TextField';
+import Chip from '@mui/material/Chip';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import Gateway, { SortOrder, FilterOptions } from '@src/api/gateway';
 import { toTitleCase } from '@src/common/utils';
-import FilterPanel from '@src/components/FilterPanel/FilterPanel';
 
 import type { Automation } from '@sharedTypes/types';
 
@@ -60,7 +61,7 @@ const AutomationTable = (): JSX.Element => {
       page: storedState?.page ?? 0,
       pageSize: storedState?.pageSize ?? 10,
       sortOrders: storedState?.sortOrders ?? [],
-      filterOptions: storedState?.filterOptions ?? { filters: {}, globalFilterOperation: 'and' }
+      filterOptions: storedState?.filterOptions ?? { filters: {} }
     };
   };
 
@@ -72,8 +73,10 @@ const AutomationTable = (): JSX.Element => {
   const [sortOrders, setSortOrders] = useState<SortOrder[]>(initialState.sortOrders);
   const [filterOptions, setFilterOptions] = useState<FilterOptions>(initialState.filterOptions);
   const [sampleData, setSampleData] = useState<Automation[]>([]);
+  const [customFilterInputs, setCustomFilterInputs] = useState<Record<string, string>>({});
 
   const headers: (keyof Automation)[] = ['id', 'name', 'type', 'status', 'creationTime'];
+  const filterableColumns: (keyof Automation)[] = ['name', 'type', 'status', 'creationTime'];
 
   // Save state to localStorage whenever relevant state changes
   useEffect(() => {
@@ -157,25 +160,118 @@ const AutomationTable = (): JSX.Element => {
     setPage(0);
     setPageSize(10);
     setSortOrders([]);
-    setFilterOptions({ filters: {}, globalFilterOperation: 'and' });
+    setFilterOptions({ filters: {} });
+    setCustomFilterInputs({});
     clearStoredState();
   };
 
-  const handleFilterChange = (newFilterOptions: FilterOptions) => {
-    setFilterOptions(newFilterOptions);
+  // Filter helper functions
+  const getSampleValues = (column: keyof Automation): string[] => {
+    const values = sampleData.map(item => String(item[column]));
+    const uniqueValues = Array.from(new Set(values));
+    return uniqueValues.slice(0, 3); // Return first 3 unique values
+  };
+
+  const handlePresetFilterToggle = (column: keyof Automation, value: string) => {
+    setFilterOptions(prev => {
+      const currentFilters = prev.filters || {};
+      const currentColumnFilter = currentFilters[column] || { filterValues: [] };
+      const isSelected = currentColumnFilter.filterValues.includes(value);
+      
+      const newFilterValues = isSelected
+        ? currentColumnFilter.filterValues.filter(v => v !== value)
+        : [...currentColumnFilter.filterValues, value];
+
+      if (newFilterValues.length === 0) {
+        const { [column]: removed, ...restFilters } = currentFilters;
+        return { ...prev, filters: restFilters };
+      }
+
+      return {
+        ...prev,
+        filters: {
+          ...currentFilters,
+          [column]: { filterValues: newFilterValues }
+        }
+      };
+    });
+    setPage(0); // Reset to first page when filters change
+  };
+
+  const handleCustomFilterChange = (column: keyof Automation, value: string) => {
+    setCustomFilterInputs(prev => ({
+      ...prev,
+      [column]: value
+    }));
+  };
+
+  const handleAddCustomFilter = (column: keyof Automation) => {
+    const customValue = customFilterInputs[column]?.trim();
+    if (!customValue) return;
+
+    setFilterOptions(prev => {
+      const currentFilters = prev.filters || {};
+      const currentColumnFilter = currentFilters[column] || { filterValues: [] };
+      
+      if (currentColumnFilter.filterValues.includes(customValue)) return prev;
+
+      return {
+        ...prev,
+        filters: {
+          ...currentFilters,
+          [column]: {
+            filterValues: [...currentColumnFilter.filterValues, customValue]
+          }
+        }
+      };
+    });
+
+    setCustomFilterInputs(prev => ({
+      ...prev,
+      [column]: ''
+    }));
+    setPage(0); // Reset to first page when filters change
+  };
+
+  const handleRemoveFilter = (column: keyof Automation, value: string) => {
+    setFilterOptions(prev => {
+      const currentFilters = prev.filters || {};
+      const currentColumnFilter = currentFilters[column];
+      if (!currentColumnFilter) return prev;
+
+      const newFilterValues = currentColumnFilter.filterValues.filter(v => v !== value);
+      
+      if (newFilterValues.length === 0) {
+        const { [column]: removed, ...restFilters } = currentFilters;
+        return { ...prev, filters: restFilters };
+      }
+
+      return {
+        ...prev,
+        filters: {
+          ...currentFilters,
+          [column]: { filterValues: newFilterValues }
+        }
+      };
+    });
     setPage(0); // Reset to first page when filters change
   };
 
   const renderTableHeader = (): JSX.Element => (
     <TableHead sx={{ background: 'lightgreen' }}>
-      <TableRow key="table-header" sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+      <TableRow sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
         {headers.map((header) => {
           const sortDirection = getSortDirection(header);
           const sortPriority = getSortPriority(header);
+          const isFilterable = filterableColumns.includes(header);
+          const sampleValues = isFilterable ? getSampleValues(header) : [];
+          const currentFilter = filterOptions.filters?.[header];
+          const hasFilter = !!currentFilter;
           
           return (
-            <TableCell key={header} sx={{ position: 'relative' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <TableCell key={header} sx={{ minWidth: 200 }}>
+              {/* Header title and sort controls */}
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
                 <span>{toTitleCase(header)}</span>
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                   {sortPriority && (
@@ -209,6 +305,78 @@ const AutomationTable = (): JSX.Element => {
                   </IconButton>
                 </Box>
               </Box>
+
+              {/* Filter Section - Only for filterable columns */}
+              {isFilterable && (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {/* Sample Values */}
+                  {sampleValues.length > 0 && (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {sampleValues.map((value) => (
+                        <Chip
+                          key={value}
+                          label={value.length > 15 ? `${value.substring(0, 15)}...` : value}
+                          size="small"
+                          clickable
+                          variant={currentFilter?.filterValues.includes(value) ? 'filled' : 'outlined'}
+                          color={currentFilter?.filterValues.includes(value) ? 'primary' : 'default'}
+                          onClick={() => handlePresetFilterToggle(header, value)}
+                          sx={{ fontSize: '0.7rem', height: '20px' }}
+                        />
+                      ))}
+                    </Box>
+                  )}
+
+                  {/* Custom Input */}
+                  <Box sx={{ display: 'flex', gap: 0.5 }}>
+                    <TextField
+                      size="small"
+                      placeholder="Custom value"
+                      value={customFilterInputs[header] || ''}
+                      onChange={(e) => handleCustomFilterChange(header, e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          handleAddCustomFilter(header);
+                        }
+                      }}
+                      sx={{ 
+                        '& .MuiInputBase-input': { 
+                          fontSize: '0.75rem',
+                          padding: '4px 8px'
+                        }
+                      }}
+                    />
+                    <Button
+                      size="small"
+                      onClick={() => handleAddCustomFilter(header)}
+                      disabled={!customFilterInputs[header]?.trim()}
+                      sx={{ 
+                        minWidth: '32px',
+                        fontSize: '0.7rem',
+                        padding: '2px 8px'
+                      }}
+                    >
+                      Add
+                    </Button>
+                  </Box>
+
+                  {/* Active Filters */}
+                  {hasFilter && (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {currentFilter.filterValues.map((value) => (
+                        <Chip
+                          key={value}
+                          label={value.length > 15 ? `${value.substring(0, 15)}...` : value}
+                          size="small"
+                          onDelete={() => handleRemoveFilter(header, value)}
+                          color="secondary"
+                          sx={{ fontSize: '0.7rem', height: '20px' }}
+                        />
+                      ))}
+                    </Box>
+                  )}
+                </Box>
+              )}
             </TableCell>
           );
         })}
@@ -229,13 +397,7 @@ const AutomationTable = (): JSX.Element => {
   );
 
   return (
-    <div>
-      <FilterPanel 
-        onFilterChange={handleFilterChange}
-        sampleData={sampleData}
-      />
-      
-      <Paper>
+    <Paper>
       <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2>Automations</h2>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -285,7 +447,6 @@ const AutomationTable = (): JSX.Element => {
         showLastButton
       />
     </Paper>
-    </div>
   );
 };
 

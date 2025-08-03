@@ -10,7 +10,6 @@ export interface SortOrder {
 
 export interface FilterValue {
   filterValues: string[];
-  operation: 'or' | 'and';
 }
 
 export interface FilterParams {
@@ -19,7 +18,6 @@ export interface FilterParams {
 
 export interface FilterOptions {
   filters?: FilterParams;
-  globalFilterOperation?: 'or' | 'and';
 }
 
 export class AutomationRepo {
@@ -28,32 +26,17 @@ export class AutomationRepo {
       return data;
     }
 
-    const { filters, globalFilterOperation = 'and' } = filterOptions;
+    const { filters } = filterOptions;
 
     return data.filter(item => {
-      const columnResults: boolean[] = [];
-
-      // Check each column filter
-      Object.entries(filters).forEach(([columnName, filterValue]) => {
-        const { filterValues, operation } = filterValue;
-        const itemValue = String(item[columnName as keyof Automation]).toLowerCase();
+      // All column filters must match (AND operation)
+      return Object.entries(filters).every(([columnName, filterValue]) => {
+        const { filterValues } = filterValue;
+        const itemValue = String(item[columnName as keyof Automation]);
         
-        // Check if item matches any/all of the filter values for this column
-        const matches = filterValues.map(value => 
-          itemValue.includes(value.toLowerCase())
-        );
-
-        const columnMatch = operation === 'or' 
-          ? matches.some(match => match)  // At least one match for OR
-          : matches.every(match => match); // All matches for AND
-
-        columnResults.push(columnMatch);
+        // Item must match at least one of the filter values for this column (OR within column)
+        return filterValues.some(value => itemValue === value);
       });
-
-      // Apply global operation between columns
-      return globalFilterOperation === 'or'
-        ? columnResults.some(result => result)  // At least one column matches for OR
-        : columnResults.every(result => result); // All columns match for AND
     });
   }
 

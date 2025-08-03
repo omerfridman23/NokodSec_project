@@ -10,7 +10,6 @@ export interface SortOrder {
 
 export interface FilterValue {
   filterValues: string[];
-  operation: 'or' | 'and';
 }
 
 export interface FilterParams {
@@ -19,7 +18,6 @@ export interface FilterParams {
 
 export interface FilterOptions {
   filters?: FilterParams;
-  globalFilterOperation?: 'or' | 'and';
 }
 
 class Gateway {
