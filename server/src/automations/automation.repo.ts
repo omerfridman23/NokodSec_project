@@ -4,7 +4,7 @@ import { Automation } from '@sharedTypes/types';
 import { GetAutomationsException } from '@common/errors';
 
 export class AutomationRepo {
-  public static async getAutomations(page: number, pageSize: number): Promise<Automation[]> {
+  public static async getAutomations(page: number, pageSize: number): Promise<{ data: Automation[], total: number }> {
     try {
       const dataFilePath = path.resolve(__dirname, 'automations.json');
       const rawData = fs.readFileSync(dataFilePath, 'utf-8');
@@ -12,9 +12,12 @@ export class AutomationRepo {
 
       const startIndex = (page - 1) * pageSize;
       const endIndex = startIndex + pageSize;
-      return automations.slice(startIndex, endIndex);
+      const paginatedData = automations.slice(startIndex, endIndex);
 
-      return automations;
+      return {
+        data: paginatedData,
+        total: automations.length
+      };
     } catch (err: any) {
       throw new GetAutomationsException(err?.message);
     }

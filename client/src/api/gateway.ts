@@ -9,8 +9,8 @@ class Gateway {
     return res;
   }
 
-  static async getAutomations(page: number, pageSize: number): Promise<AxiosResponse<Automation[]>> {
-    const automations = await Gateway.get<Automation[]>(`automations?page=${page}&pageSize=${pageSize}`);
+  static async getAutomations(page: number, pageSize: number): Promise<AxiosResponse<{ data: Automation[], total: number }>> {
+    const automations = await Gateway.get<{ data: Automation[], total: number }>(`automations?page=${page}&pageSize=${pageSize}`);
     return automations;
   }
 }
