@@ -12,7 +12,10 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
-import Gateway from '@src/api/gateway';
+import IconButton from '@mui/material/IconButton';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import Gateway, { SortOrder } from '@src/api/gateway';
 import { toTitleCase } from '@src/common/utils';
 
 import type { Automation } from '@sharedTypes/types';
@@ -22,21 +25,23 @@ const AutomationTable = (): JSX.Element => {
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
+  const [sortOrders, setSortOrders] = useState<SortOrder[]>([]);
 
-  const headers: (keyof Automation)[] = ['id', 'name', 'status', 'creationTime', 'type'];
+  const headers: (keyof Automation)[] = ['id', 'name', 'type', 'status', 'creationTime'];
 
   useEffect(() => {
     const fetchAutomationsData = async (): Promise<void> => {
       const response = await Gateway.getAutomations(
         page + 1, // Convert 0-based to 1-based page number
-        pageSize
+        pageSize,
+        sortOrders
       );
       const { data, total } = response?.data || { data: [], total: 0 };
       setAutomationsData(data);
       setTotalCount(total);
     };
     fetchAutomationsData();
-  }, [page, pageSize]);
+  }, [page, pageSize, sortOrders]);
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
@@ -47,12 +52,87 @@ const AutomationTable = (): JSX.Element => {
     setPage(0); // Reset to first page when changing page size
   };
 
+  const handleSort = (column: keyof Automation) => {
+    setSortOrders(prevSortOrders => {
+      // Check if column is already being sorted
+      const existingIndex = prevSortOrders.findIndex(sort => sort.column === column);
+      
+      if (existingIndex !== -1) {
+        // Column exists, toggle direction or remove if it's DESC
+        const existingSort = prevSortOrders[existingIndex];
+        if (existingSort.direction === 'ASC') {
+          // Change to DESC
+          const newSortOrders = [...prevSortOrders];
+          newSortOrders[existingIndex] = { ...existingSort, direction: 'DESC' };
+          return newSortOrders;
+        } else {
+          // Remove this sort order
+          return prevSortOrders.filter((_, index) => index !== existingIndex);
+        }
+      } else {
+        // Add new sort order at the end (lowest priority)
+        return [...prevSortOrders, { column, direction: 'ASC' }];
+      }
+    });
+    setPage(0); // Reset to first page when sorting changes
+  };
+
+  const getSortDirection = (column: keyof Automation): 'ASC' | 'DESC' | null => {
+    const sortOrder = sortOrders.find(sort => sort.column === column);
+    return sortOrder ? sortOrder.direction : null;
+  };
+
+  const getSortPriority = (column: keyof Automation): number | null => {
+    const index = sortOrders.findIndex(sort => sort.column === column);
+    return index !== -1 ? index + 1 : null;
+  };
+
   const renderTableHeader = (): JSX.Element => (
     <TableHead sx={{ background: 'lightgreen' }}>
       <TableRow key="table-header" sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-        {headers.map((header) => (
-          <TableCell key={header}>{toTitleCase(header)}</TableCell>
-        ))}
+        {headers.map((header) => {
+          const sortDirection = getSortDirection(header);
+          const sortPriority = getSortPriority(header);
+          
+          return (
+            <TableCell key={header} sx={{ position: 'relative' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span>{toTitleCase(header)}</span>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  {sortPriority && (
+                    <Box 
+                      sx={{ 
+                        fontSize: '0.75rem', 
+                        color: 'text.secondary', 
+                        marginRight: 0.5,
+                        minWidth: '1rem',
+                        textAlign: 'center'
+                      }}
+                    >
+                      {sortPriority}
+                    </Box>
+                  )}
+                  <IconButton
+                    size="small"
+                    onClick={() => handleSort(header)}
+                    sx={{ 
+                      padding: '2px',
+                      color: sortDirection ? 'primary.main' : 'action.disabled'
+                    }}
+                  >
+                    {sortDirection === 'ASC' ? (
+                      <ArrowUpwardIcon fontSize="small" />
+                    ) : sortDirection === 'DESC' ? (
+                      <ArrowDownwardIcon fontSize="small" />
+                    ) : (
+                      <ArrowUpwardIcon fontSize="small" />
+                    )}
+                  </IconButton>
+                </Box>
+              </Box>
+            </TableCell>
+          );
+        })}
       </TableRow>
     </TableHead>
   );
