@@ -13,6 +13,8 @@ import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import IconButton from '@mui/material/IconButton';
+import Button from '@mui/material/Button';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import Gateway, { SortOrder } from '@src/api/gateway';
@@ -21,13 +23,58 @@ import { toTitleCase } from '@src/common/utils';
 import type { Automation } from '@sharedTypes/types';
 
 const AutomationTable = (): JSX.Element => {
+  const STORAGE_KEY = 'automations-table-state';
+  
+  // Helper functions for localStorage
+  const saveStateToStorage = (state: { page: number; pageSize: number; sortOrders: SortOrder[] }) => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (error) {
+      console.warn('Failed to save table state to localStorage:', error);
+    }
+  };
+
+  const loadStateFromStorage = (): { page: number; pageSize: number; sortOrders: SortOrder[] } | null => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored ? JSON.parse(stored) : null;
+    } catch (error) {
+      console.warn('Failed to load table state from localStorage:', error);
+      return null;
+    }
+  };
+
+  const clearStoredState = () => {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (error) {
+      console.warn('Failed to clear table state from localStorage:', error);
+    }
+  };
+
+  // Initialize state from localStorage or defaults
+  const initializeState = () => {
+    const storedState = loadStateFromStorage();
+    return {
+      page: storedState?.page ?? 0,
+      pageSize: storedState?.pageSize ?? 10,
+      sortOrders: storedState?.sortOrders ?? []
+    };
+  };
+
+  const initialState = initializeState();
   const [automationsData, setAutomationsData] = useState<Automation[]>([]);
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(10);
+  const [page, setPage] = useState(initialState.page);
+  const [pageSize, setPageSize] = useState(initialState.pageSize);
   const [totalCount, setTotalCount] = useState(0);
-  const [sortOrders, setSortOrders] = useState<SortOrder[]>([]);
+  const [sortOrders, setSortOrders] = useState<SortOrder[]>(initialState.sortOrders);
 
   const headers: (keyof Automation)[] = ['id', 'name', 'type', 'status', 'creationTime'];
+
+  // Save state to localStorage whenever relevant state changes
+  useEffect(() => {
+    saveStateToStorage({ page, pageSize, sortOrders });
+  }, [page, pageSize, sortOrders]);
 
   useEffect(() => {
     const fetchAutomationsData = async (): Promise<void> => {
@@ -85,6 +132,13 @@ const AutomationTable = (): JSX.Element => {
   const getSortPriority = (column: keyof Automation): number | null => {
     const index = sortOrders.findIndex(sort => sort.column === column);
     return index !== -1 ? index + 1 : null;
+  };
+
+  const handleReset = () => {
+    setPage(0);
+    setPageSize(10);
+    setSortOrders([]);
+    clearStoredState();
   };
 
   const renderTableHeader = (): JSX.Element => (
@@ -153,22 +207,33 @@ const AutomationTable = (): JSX.Element => {
     <Paper>
       <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2>Automations</h2>
-        <FormControl sx={{ minWidth: 120 }}>
-          <InputLabel id="page-size-select-label">Items per page</InputLabel>
-          <Select
-            labelId="page-size-select-label"
-            id="page-size-select"
-            value={pageSize}
-            label="Items per page"
-            onChange={handleChangePageSize}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<RefreshIcon />}
+            onClick={handleReset}
+            sx={{ minWidth: 'auto' }}
           >
-            <MenuItem value={5}>5</MenuItem>
-            <MenuItem value={10}>10</MenuItem>
-            <MenuItem value={25}>25</MenuItem>
-            <MenuItem value={50}>50</MenuItem>
-            <MenuItem value={100}>100</MenuItem>
-          </Select>
-        </FormControl>
+            Reset
+          </Button>
+          <FormControl sx={{ minWidth: 120 }}>
+            <InputLabel id="page-size-select-label">Items per page</InputLabel>
+            <Select
+              labelId="page-size-select-label"
+              id="page-size-select"
+              value={pageSize}
+              label="Items per page"
+              onChange={handleChangePageSize}
+            >
+              <MenuItem value={5}>5</MenuItem>
+              <MenuItem value={10}>10</MenuItem>
+              <MenuItem value={25}>25</MenuItem>
+              <MenuItem value={50}>50</MenuItem>
+              <MenuItem value={100}>100</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
       </Box>
       
       <TableContainer>
