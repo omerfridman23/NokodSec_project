@@ -4,7 +4,9 @@ import { AutomationRepo } from './automation.repo';
 export class AutomationsCtrl {
   public static async getAutomations(req: Request, res: Response): Promise<void> {
     try {
-      const automations = await AutomationRepo.getAutomations();
+      const page = parseInt(req.query.page as string, 10) || 1;
+      const pageSize = parseInt(req.query.pageSize as string, 10) || 10;
+      const automations = await AutomationRepo.getAutomations(page, pageSize);
       res.json(automations);
     } catch (error: any) {
       res.status(500).json({ message: error?.message });

@@ -18,7 +18,10 @@ const AutomationTable = (): JSX.Element => {
 
   useEffect(() => {
     const fetchAutomationsData = async (): Promise<void> => {
-      const response = await Gateway.getAutomations();
+      const response = await Gateway.getAutomations(
+        1,
+        10
+      );
       const automationsRes = response?.data;
       setAutomationsData(automationsRes);
     };
