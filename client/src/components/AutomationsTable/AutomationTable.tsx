@@ -17,8 +17,9 @@ import Button from '@mui/material/Button';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
-import Gateway, { SortOrder } from '@src/api/gateway';
+import Gateway, { SortOrder, FilterOptions } from '@src/api/gateway';
 import { toTitleCase } from '@src/common/utils';
+import FilterPanel from '@src/components/FilterPanel/FilterPanel';
 
 import type { Automation } from '@sharedTypes/types';
 
@@ -26,7 +27,7 @@ const AutomationTable = (): JSX.Element => {
   const STORAGE_KEY = 'automations-table-state';
   
   // Helper functions for localStorage
-  const saveStateToStorage = (state: { page: number; pageSize: number; sortOrders: SortOrder[] }) => {
+  const saveStateToStorage = (state: { page: number; pageSize: number; sortOrders: SortOrder[]; filterOptions: FilterOptions }) => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (error) {
@@ -34,7 +35,7 @@ const AutomationTable = (): JSX.Element => {
     }
   };
 
-  const loadStateFromStorage = (): { page: number; pageSize: number; sortOrders: SortOrder[] } | null => {
+  const loadStateFromStorage = (): { page: number; pageSize: number; sortOrders: SortOrder[]; filterOptions: FilterOptions } | null => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       return stored ? JSON.parse(stored) : null;
@@ -58,7 +59,8 @@ const AutomationTable = (): JSX.Element => {
     return {
       page: storedState?.page ?? 0,
       pageSize: storedState?.pageSize ?? 10,
-      sortOrders: storedState?.sortOrders ?? []
+      sortOrders: storedState?.sortOrders ?? [],
+      filterOptions: storedState?.filterOptions ?? { filters: {}, globalFilterOperation: 'and' }
     };
   };
 
@@ -68,27 +70,44 @@ const AutomationTable = (): JSX.Element => {
   const [pageSize, setPageSize] = useState(initialState.pageSize);
   const [totalCount, setTotalCount] = useState(0);
   const [sortOrders, setSortOrders] = useState<SortOrder[]>(initialState.sortOrders);
+  const [filterOptions, setFilterOptions] = useState<FilterOptions>(initialState.filterOptions);
+  const [sampleData, setSampleData] = useState<Automation[]>([]);
 
   const headers: (keyof Automation)[] = ['id', 'name', 'type', 'status', 'creationTime'];
 
   // Save state to localStorage whenever relevant state changes
   useEffect(() => {
-    saveStateToStorage({ page, pageSize, sortOrders });
-  }, [page, pageSize, sortOrders]);
+    saveStateToStorage({ page, pageSize, sortOrders, filterOptions });
+  }, [page, pageSize, sortOrders, filterOptions]);
 
   useEffect(() => {
     const fetchAutomationsData = async (): Promise<void> => {
       const response = await Gateway.getAutomations(
         page + 1, // Convert 0-based to 1-based page number
         pageSize,
-        sortOrders
+        sortOrders,
+        filterOptions
       );
       const { data, total } = response?.data || { data: [], total: 0 };
       setAutomationsData(data);
       setTotalCount(total);
     };
     fetchAutomationsData();
-  }, [page, pageSize, sortOrders]);
+  }, [page, pageSize, sortOrders, filterOptions]);
+
+  // Fetch sample data for filters (first page with larger size)
+  useEffect(() => {
+    const fetchSampleData = async (): Promise<void> => {
+      try {
+        const response = await Gateway.getAutomations(1, 100); // Get first 100 items for sample data
+        const { data } = response?.data || { data: [], total: 0 };
+        setSampleData(data);
+      } catch (error) {
+        console.warn('Failed to fetch sample data for filters:', error);
+      }
+    };
+    fetchSampleData();
+  }, []);
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
@@ -138,7 +157,13 @@ const AutomationTable = (): JSX.Element => {
     setPage(0);
     setPageSize(10);
     setSortOrders([]);
+    setFilterOptions({ filters: {}, globalFilterOperation: 'and' });
     clearStoredState();
+  };
+
+  const handleFilterChange = (newFilterOptions: FilterOptions) => {
+    setFilterOptions(newFilterOptions);
+    setPage(0); // Reset to first page when filters change
   };
 
   const renderTableHeader = (): JSX.Element => (
@@ -204,7 +229,13 @@ const AutomationTable = (): JSX.Element => {
   );
 
   return (
-    <Paper>
+    <div>
+      <FilterPanel 
+        onFilterChange={handleFilterChange}
+        sampleData={sampleData}
+      />
+      
+      <Paper>
       <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2>Automations</h2>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -254,6 +285,7 @@ const AutomationTable = (): JSX.Element => {
         showLastButton
       />
     </Paper>
+    </div>
   );
 };
 
